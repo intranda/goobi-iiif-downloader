@@ -38,7 +38,7 @@
 		<dependency>
 			<groupId>de.intranda.api.iiif</groupId>
 			<artifactId>iiif-api-model</artifactId>
-			<version>1.1.2</version>
+			<version>1.1.5</version>
 		</dependency>
 		<dependency>
 			<groupId>org.slf4j</groupId>
