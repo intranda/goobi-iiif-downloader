@@ -139,7 +139,10 @@ public class IIIFDownloaderMain implements Callable<Integer> {
         ImageContent imageContent = ((ImageContent) (lanno.getResource()));
         String imageUri = imageContent.getService().getId();
         String basename = imageUri.substring(imageUri.lastIndexOf('/') + 1);
-        basename = basename.substring(0, basename.lastIndexOf('.'));
+        int dotIdx = basename.lastIndexOf('.');
+        if (dotIdx > 0) {
+            basename = basename.substring(0, dotIdx);
+        }
         String fullImageUri = imageUri + "/full/full/0/default.jpg";
         //now try to get the ALTO url
         Optional<URI> altoUri = Optional.empty();
@@ -196,7 +199,8 @@ public class IIIFDownloaderMain implements Callable<Integer> {
         ObjectMapper mapper = new ObjectMapper();
         mapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
         mapper.configure(DeserializationFeature.ACCEPT_SINGLE_VALUE_AS_ARRAY, true);
-        Optional<AnnotationList> optAltoAnnotation = canvas.getOtherContent().stream()
+        Optional<AnnotationList> optAltoAnnotation = canvas.getOtherContent()
+                .stream()
                 .filter(a -> a.getLabel() != null)
                 .filter(a -> a.getLabel().getValue().orElseGet(() -> "").equals("ALTO"))
                 .findFirst();
