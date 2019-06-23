@@ -9,6 +9,12 @@ import de.intranda.api.iiif.presentation.Manifest;
 import de.intranda.api.iiif.presentation.Range;
 import de.intranda.metadata.multilanguage.Metadata;
 
+/**
+ * This class contains fully pure functions to query IIIF manifests without side-effects
+ * 
+ * @author Oliver Paetzel
+ *
+ */
 public class ManifestQuery {
     public static Optional<Canvas> canvasToFullCanvas(Canvas canvas, Manifest manifest) {
         return manifest.getSequences()

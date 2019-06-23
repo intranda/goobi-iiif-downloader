@@ -2,6 +2,12 @@ package de.intranda.iiif.downloader;
 
 import java.io.IOException;
 
+/**
+ * Small runnable to show progress in a command-line application
+ * 
+ * @author Oliver Paetzel
+ *
+ */
 public class StatusRunnable implements Runnable {
     private static final String[] rotateArr = new String[] { "|", "/", "-", "\\" };
     private volatile boolean shouldStop;

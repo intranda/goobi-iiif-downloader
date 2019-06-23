@@ -39,6 +39,12 @@ import picocli.CommandLine;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
 
+/**
+ * CLI to download files linked in IIIF manifests.
+ * 
+ * @author Oliver Paetzel
+ *
+ */
 @Command(name = "java -jar goobi-iiif-downloader.jar", sortOptions = false)
 public class IIIFDownloaderMain implements Callable<Integer> {
 

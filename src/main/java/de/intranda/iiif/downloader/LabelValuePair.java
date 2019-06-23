@@ -5,6 +5,12 @@ import java.util.Optional;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 
+/**
+ * Data class to hold label-value pairs for querying manifests
+ * 
+ * @author Oliver Paetzel
+ *
+ */
 @Data
 @AllArgsConstructor
 public class LabelValuePair {
