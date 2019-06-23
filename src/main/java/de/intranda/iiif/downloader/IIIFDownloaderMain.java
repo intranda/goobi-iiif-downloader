@@ -54,10 +54,12 @@ public class IIIFDownloaderMain implements Callable<Integer> {
     @Option(names = { "--destination", "-d" }, description = "the destination folder to download to", required = true)
     private String destinationFolder;
 
-    @Option(names = { "--include_structure", "-is" }, description = "structure to include - can be multiple")
+    @Option(names = { "--include_structure", "-is" },
+            description = "structure to include - example: \"Strukturtyp:Abbildung\". The option is repeatable.")
     private List<String> includeStructures;
 
-    @Option(names = { "--exclude_structure", "-es" }, description = "structure to exclude - can be multiple")
+    @Option(names = { "--exclude_structure", "-es" },
+            description = "structure to exclude - example: \"Strukturtyp:Abbildung\". The option is repeatable.")
     private List<String> excludeStructures;
 
     @Option(names = { "--structure_mode", "-sm" }, description = "structure mode. Possible values: \"firstpage\" and \"all\"")
