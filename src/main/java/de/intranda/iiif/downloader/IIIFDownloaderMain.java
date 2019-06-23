@@ -11,12 +11,16 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Random;
 import java.util.Set;
 import java.util.concurrent.Callable;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import com.fasterxml.jackson.core.JsonParseException;
 import com.fasterxml.jackson.databind.DeserializationFeature;
@@ -27,19 +31,31 @@ import de.intranda.api.annotation.LinkedAnnotation;
 import de.intranda.api.iiif.presentation.AnnotationList;
 import de.intranda.api.iiif.presentation.Canvas;
 import de.intranda.api.iiif.presentation.Manifest;
+import de.intranda.api.iiif.presentation.Range;
 import de.intranda.api.iiif.presentation.Sequence;
 import de.intranda.api.iiif.presentation.content.ImageContent;
 import de.intranda.api.iiif.presentation.content.LinkingContent;
 import picocli.CommandLine;
+import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
 
+@Command(name = "java -jar goobi-iiif-downloader.jar", sortOptions = false)
 public class IIIFDownloaderMain implements Callable<Integer> {
 
-    @Option(names = { "--manifest", "-m" }, description = "the manifest URL to parse and download from")
+    @Option(names = { "--manifest", "-m" }, description = "the manifest URL to parse and download from", required = true)
     private String manifestUrl;
 
-    @Option(names = { "--destination", "-d" }, description = "the destination folder to download to")
+    @Option(names = { "--destination", "-d" }, description = "the destination folder to download to", required = true)
     private String destinationFolder;
+
+    @Option(names = { "--include_structure", "-is" }, description = "structure to include - can be multiple")
+    private List<String> includeStructures;
+
+    @Option(names = { "--exclude_structure", "-es" }, description = "structure to exclude - can be multiple")
+    private List<String> excludeStructures;
+
+    @Option(names = { "--structure_mode", "-sm" }, description = "structure mode. Possible values: \"firstpage\" and \"all\"")
+    private String structureMode;
 
     @Option(names = { "-max", "--maximum_images" }, description = "the maximum number of images to download")
     private Integer maximumImages;
@@ -82,7 +98,7 @@ public class IIIFDownloaderMain implements Callable<Integer> {
         Manifest manifest = optManifest.get();
 
         try {
-            downloadPages(manifest, maximumImages, selectRandomImages, downloadAlto);
+            downloadPages(manifest);
         } catch (IOException e) {
             System.err.println("error downloading images/alto");
             return 1;
@@ -91,17 +107,76 @@ public class IIIFDownloaderMain implements Callable<Integer> {
         return 0;
     }
 
-    private void downloadPages(Manifest manifest, Integer maximumImages, boolean selectRandomImages, boolean downloadAlto)
+    private void downloadPages(Manifest manifest)
             throws MalformedURLException, IOException {
 
-        Sequence seq = manifest.getSequences().get(0);
-        List<Canvas> canvases = seq.getCanvases();
-        if (selectRandomImages && maximumImages != null && maximumImages < canvases.size()) {
-            downloadRandom(maximumImages, downloadAlto, canvases);
+        if (includeStructures != null || excludeStructures != null) {
+            downloadStructures(maximumImages, downloadAlto, includeStructures, excludeStructures, selectRandomImages,
+                    "firstpage".equals(structureMode), manifest);
         } else {
-            downloadSequential(maximumImages, downloadAlto, canvases);
+            Sequence seq = manifest.getSequences().get(0);
+            List<Canvas> canvases = seq.getCanvases();
+            if (selectRandomImages && maximumImages != null && maximumImages < canvases.size()) {
+                downloadRandom(maximumImages, downloadAlto, canvases);
+            } else {
+                downloadSequential(maximumImages, downloadAlto, canvases);
+            }
         }
 
+    }
+
+    private void downloadStructures(Integer maximumImages, boolean downloadAlto, List<String> includeStructureStrings,
+            List<String> excludeStructureStrings, boolean selectRandomImages, boolean filterStructsFirstPage, Manifest manifest)
+            throws JsonParseException, JsonMappingException, MalformedURLException, IOException {
+        List<LabelValuePair> includeStructures = includeStructureStrings == null ? new ArrayList<>() : includeStructureStrings.stream()
+                .map(s -> s.split("::"))
+                .map(sArr -> new LabelValuePair(sArr[0], sArr[1]))
+                .collect(Collectors.toList());
+        List<LabelValuePair> excludeStructures = excludeStructureStrings == null ? new ArrayList<>() : excludeStructureStrings.stream()
+                .map(s -> s.split("::"))
+                .map(sArr -> new LabelValuePair(sArr[0], sArr[1]))
+                .collect(Collectors.toList());
+        List<Canvas> canvases;
+        if (!includeStructures.isEmpty()) {
+            // search for includeStructures in manifest and filter excludeStructures
+            // first, get all included structures
+            List<Range> filteredStructures = manifest.getStructures()
+                    .stream()
+                    .filter(struct -> ManifestQuery.filterIncludeStructure(struct, includeStructures))
+                    .collect(Collectors.toList());
+            // now get all canvases and filter out the ones that should be excluded
+            Stream<Canvas> canvasStream;
+            if (filterStructsFirstPage) {
+                canvasStream = filteredStructures.stream()
+                        .map(struct -> struct.getCanvases().get(0));
+            } else {
+                canvasStream = filteredStructures.stream()
+                        .flatMap(struct -> struct.getCanvases().stream());
+            }
+            canvases = canvasStream
+                    .filter(canvas -> ManifestQuery.filterExcludeCanvas(canvas, excludeStructures, filterStructsFirstPage, manifest))
+                    .map(canvas -> ManifestQuery.canvasToFullCanvas(canvas, manifest))
+                    .filter(Optional::isPresent)
+                    .map(Optional::get)
+                    .collect(Collectors.toList());
+        } else {
+            // take random or all pages and check if they are excluded, then skip them
+            canvases = manifest.getSequences()
+                    .stream()
+                    .flatMap(seq -> seq.getCanvases().stream())
+                    .filter(canvas -> ManifestQuery.filterExcludeCanvas(canvas, excludeStructures, filterStructsFirstPage, manifest))
+                    .collect(Collectors.toList());
+        }
+        if (selectRandomImages) {
+            Collections.shuffle(canvases);
+        }
+        if (maximumImages != null) {
+            canvases = canvases.subList(0, maximumImages);
+        }
+        // now that everything is filtered, the remaining canvases can be downloaded...
+        for (Canvas c : canvases) {
+            downloadImageAndAlto(c, downloadAlto);
+        }
     }
 
     private void downloadRandom(Integer maximumImages, boolean downloadAlto, List<Canvas> canvases) throws JsonParseException, JsonMappingException,
