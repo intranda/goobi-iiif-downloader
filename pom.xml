@@ -5,7 +5,7 @@
 
 	<groupId>de.intranda.iiif</groupId>
 	<artifactId>goobi-iiif-downloader</artifactId>
-	<version>1.1.0</version>
+	<version>1.1.1</version>
 	<packaging>jar</packaging>
 
 	<name>downloader</name>
@@ -57,6 +57,13 @@
 			<version>1.18.8</version>
 			<scope>provided</scope>
 		</dependency>
+		<!-- https://mvnrepository.com/artifact/org.apache.httpcomponents/fluent-hc -->
+		<dependency>
+			<groupId>org.apache.httpcomponents</groupId>
+			<artifactId>fluent-hc</artifactId>
+			<version>4.5.12</version>
+		</dependency>
+
 
 	</dependencies>
 	<build>

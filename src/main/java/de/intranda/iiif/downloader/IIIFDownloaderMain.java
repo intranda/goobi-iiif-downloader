@@ -1,7 +1,9 @@
 package de.intranda.iiif.downloader;
 
+import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.net.MalformedURLException;
 import java.net.URI;
@@ -21,6 +23,9 @@ import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+
+import org.apache.http.HttpResponse;
+import org.apache.http.client.fluent.Request;
 
 import com.fasterxml.jackson.core.JsonParseException;
 import com.fasterxml.jackson.databind.DeserializationFeature;
@@ -307,7 +312,22 @@ public class IIIFDownloaderMain implements Callable<Integer> {
         StatusRunnable run = new StatusRunnable("Receiving IIIF manifest...");
         Thread statusThread = new Thread(run);
         statusThread.start();
-        try (InputStream in = new URL(manifest).openStream()) {
+        HttpResponse hr = Request.Get(manifest)
+                .execute()
+                .returnResponse();
+        if (hr.getStatusLine().getStatusCode() >= 400) {
+            String response;
+            try (InputStream inputStream = hr.getEntity().getContent()) {
+                response = new BufferedReader(new InputStreamReader(inputStream))
+                        .lines()
+                        .collect(Collectors.joining("\n"));
+            }
+            //hr.getEntity().getContent();
+            System.err.println(String.format("Could not retrieve Manifest. The server responded with status code %d and message:\n%s",
+                    hr.getStatusLine().getStatusCode(), response));
+            return Optional.empty();
+        }
+        try (InputStream in = hr.getEntity().getContent()) {
             iiifMani = mapper.readValue(in, Manifest.class);
         }
         run.setMessage("Received IIIF manifest.    ");

@@ -1,3 +1,4 @@
 target
 src/main/resources/rebel.xml
 target/classes/rebel.xml
+dependency-reduced-pom.xml
