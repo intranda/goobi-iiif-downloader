@@ -22,7 +22,7 @@ public class ManifestQuery {
                 .findFirst();
     }
 
-    private static Stream<JsonNode> streamJsonNodeAsArray(JsonNode arr) {
+    public static Stream<JsonNode> streamJsonNodeAsArray(JsonNode arr) {
         if (arr == null) {
             return Stream.empty();
         }

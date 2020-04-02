@@ -14,6 +14,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
@@ -120,9 +122,8 @@ public class IIIFDownloaderMain implements Callable<Integer> {
             throws MalformedURLException, IOException {
 
         if (includeStructures != null || excludeStructures != null) {
-            //TODO
-            /*downloadStructures(maximumImages, downloadAlto, includeStructures, excludeStructures, selectRandomImages,
-                    "firstpage".equals(structureMode), manifest);*/
+            downloadStructures(maximumImages, downloadAlto, includeStructures, excludeStructures, selectRandomImages,
+                    "firstpage".equals(structureMode), manifest);
         } else {
             JsonNode seq = manifest.get("sequences").get(0);
             JsonNode canvases = seq.get("canvases");
@@ -139,8 +140,8 @@ public class IIIFDownloaderMain implements Callable<Integer> {
 
     }
 
-    /*private void downloadStructures(Integer maximumImages, boolean downloadAlto, List<String> includeStructureStrings,
-            List<String> excludeStructureStrings, boolean selectRandomImages, boolean filterStructsFirstPage, Manifest manifest)
+    private void downloadStructures(Integer maximumImages, boolean downloadAlto, List<String> includeStructureStrings,
+            List<String> excludeStructureStrings, boolean selectRandomImages, boolean filterStructsFirstPage, JsonNode manifest)
             throws JsonParseException, JsonMappingException, MalformedURLException, IOException {
         List<LabelValuePair> includeStructures = includeStructureStrings == null ? new ArrayList<>() : includeStructureStrings.stream()
                 .map(s -> s.split("::"))
@@ -150,22 +151,21 @@ public class IIIFDownloaderMain implements Callable<Integer> {
                 .map(s -> s.split("::"))
                 .map(sArr -> new LabelValuePair(sArr[0], sArr[1]))
                 .collect(Collectors.toList());
-        List<Canvas> canvases;
+        List<JsonNode> canvases;
         if (!includeStructures.isEmpty()) {
             // search for includeStructures in manifest and filter excludeStructures
             // first, get all included structures
-            List<Range> filteredStructures = manifest.getStructures()
-                    .stream()
+            List<JsonNode> filteredStructures = ManifestQuery.streamJsonNodeAsArray(manifest.get("structures"))
                     .filter(struct -> ManifestQuery.filterIncludeStructure(struct, includeStructures))
                     .collect(Collectors.toList());
             // now get all canvases and filter out the ones that should be excluded
-            Stream<Canvas> canvasStream;
+            Stream<JsonNode> canvasStream;
             if (filterStructsFirstPage) {
                 canvasStream = filteredStructures.stream()
-                        .map(struct -> struct.getCanvases().get(0));
+                        .map(struct -> struct.get("canvases").get(0));
             } else {
                 canvasStream = filteredStructures.stream()
-                        .flatMap(struct -> struct.getCanvases().stream());
+                        .flatMap(struct -> ManifestQuery.streamJsonNodeAsArray(struct.get("canvases")));
             }
             canvases = canvasStream
                     .filter(canvas -> ManifestQuery.filterExcludeCanvas(canvas, excludeStructures, filterStructsFirstPage, manifest))
@@ -175,9 +175,8 @@ public class IIIFDownloaderMain implements Callable<Integer> {
                     .collect(Collectors.toList());
         } else {
             // take random or all pages and check if they are excluded, then skip them
-            canvases = manifest.getSequences()
-                    .stream()
-                    .flatMap(seq -> seq.getCanvases().stream())
+            canvases = ManifestQuery.streamJsonNodeAsArray(manifest.get("sequences"))
+                    .flatMap(seq -> ManifestQuery.streamJsonNodeAsArray(seq.get("canvases")))
                     .filter(canvas -> ManifestQuery.filterExcludeCanvas(canvas, excludeStructures, filterStructsFirstPage, manifest))
                     .collect(Collectors.toList());
         }
@@ -188,10 +187,10 @@ public class IIIFDownloaderMain implements Callable<Integer> {
             canvases = canvases.subList(0, maximumImages);
         }
         // now that everything is filtered, the remaining canvases can be downloaded...
-        for (Canvas c : canvases) {
+        for (JsonNode c : canvases) {
             downloadImageAndAlto(c, downloadAlto);
         }
-    }*/
+    }
 
     private void downloadRandom(Integer maximumImages, boolean downloadAlto, ArrayNode canvases) throws JsonParseException, JsonMappingException,
             MalformedURLException, IOException {
