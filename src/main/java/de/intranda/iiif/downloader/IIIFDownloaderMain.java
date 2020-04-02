@@ -220,7 +220,7 @@ public class IIIFDownloaderMain implements Callable<Integer> {
         }
     }
 
-    private Pattern p = Pattern.compile(".*?/(.*)/.*?/.*?/.*?/default.jpg$");
+    private Pattern p = Pattern.compile("(.*?/.*)/.*?/(.*?)/.*?/default.jpg$");
 
     private boolean downloadImageAndAlto(JsonNode canvas, boolean downloadAlto)
             throws JsonParseException, JsonMappingException, MalformedURLException,
@@ -237,7 +237,11 @@ public class IIIFDownloaderMain implements Callable<Integer> {
         String fullImageUri = imageUri + "/full/full/0/default.jpg";
         Matcher matcher = p.matcher(imageUri);
         if (matcher.matches()) {
-            fullImageUri = imageUri;
+            if (!matcher.group(2).equals("max")) {
+                fullImageUri = matcher.group(1) + "/full/max/0/default.jpg";
+            } else {
+                fullImageUri = imageUri;
+            }
             String group = matcher.group(1);
             basename = group.substring(group.lastIndexOf('/') + 1);
             System.out.println("new basename: " + basename);

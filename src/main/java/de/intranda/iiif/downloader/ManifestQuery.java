@@ -18,7 +18,8 @@ public class ManifestQuery {
 
     public static Optional<JsonNode> canvasToFullCanvas(JsonNode canvas, JsonNode manifest) {
         return streamJsonNodeAsArray(manifest.get("sequences").get(0).get("canvases"))
-                .filter(c -> idsEqual(c.get("@id").asText(), canvas.get("@id").asText()))
+                .filter(c -> idsEqual(c.isTextual() ? c.asText() : c.get("@id").asText(),
+                        canvas.isTextual() ? canvas.asText() : canvas.get("@id").asText()))
                 .findFirst();
     }
 
@@ -37,13 +38,6 @@ public class ManifestQuery {
                     .filter(struct -> struct.get("canvases") != null && struct.get("canvases").isArray()
                             && idsEqual(struct.get("canvases").get(0).asText(), (canvas.get("@id").asText())));
         }
-        /*structStream
-                .filter(s -> s != null)
-                .forEach(struct -> {
-                    streamJsonNodeAsArray(struct.get("canvases")).forEach(c -> {
-                        System.out.println(c);
-                    });
-                });*/
         return structStream
                 .filter(s -> s != null)
                 .filter(struct -> struct.get("canvases") != null &&
