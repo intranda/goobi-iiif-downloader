@@ -1,14 +1,5 @@
 package de.intranda.iiif.downloader;
 
-import java.util.List;
-import java.util.Optional;
-import java.util.stream.Stream;
-
-import de.intranda.api.iiif.presentation.Canvas;
-import de.intranda.api.iiif.presentation.Manifest;
-import de.intranda.api.iiif.presentation.Range;
-import de.intranda.metadata.multilanguage.Metadata;
-
 /**
  * This class contains fully pure functions to query IIIF manifests without side-effects
  * 
@@ -16,7 +7,8 @@ import de.intranda.metadata.multilanguage.Metadata;
  *
  */
 public class ManifestQuery {
-    public static Optional<Canvas> canvasToFullCanvas(Canvas canvas, Manifest manifest) {
+    /*
+    public static Optional<> canvasToFullCanvas(Canvas canvas, Manifest manifest) {
         return manifest.getSequences()
                 .get(0)
                 .getCanvases()
@@ -24,7 +16,7 @@ public class ManifestQuery {
                 .filter(c -> c.getId().equals(canvas.getId()))
                 .findFirst();
     }
-
+    
     public static Stream<Range> streamAllCanvasStructures(Canvas canvas, boolean firstPageOnly, Manifest manifest) {
         if (firstPageOnly) {
             return manifest.getStructures()
@@ -36,7 +28,7 @@ public class ManifestQuery {
                 .stream()
                 .filter(struct -> struct.getCanvases() != null && struct.getCanvases().stream().anyMatch(c -> c.getId().equals(canvas.getId())));
     }
-
+    
     public static boolean filterExcludeCanvas(Canvas canvas, List<LabelValuePair> exclude, boolean filterStructsFirstPage, Manifest manifest) {
         if (exclude.isEmpty()) {
             return true;
@@ -46,7 +38,7 @@ public class ManifestQuery {
                 .flatMap(struct -> struct.getMetadata().stream())
                 .noneMatch(meta -> metaContainsAnyLabelValuePair(meta, exclude));
     }
-
+    
     public static boolean filterIncludeStructure(Range struct, List<LabelValuePair> include) {
         if (struct == null || struct.getMetadata() == null || include == null) {
             return false;
@@ -55,7 +47,7 @@ public class ManifestQuery {
                 .stream()
                 .anyMatch(meta -> metaContainsAnyLabelValuePair(meta, include));
     }
-
+    
     private static boolean metaContainsAnyLabelValuePair(Metadata meta, List<LabelValuePair> include) {
         //check multi-language metadata values
         return meta.getLabel()
@@ -65,5 +57,5 @@ public class ManifestQuery {
                     return include.stream()
                             .anyMatch(lvp -> lvp.equals(meta.getLabel().getValue(lang), meta.getValue().getValue(lang)));
                 });
-    }
+    }*/
 }

@@ -7,21 +7,23 @@ import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.net.MalformedURLException;
 import java.net.URI;
+import java.net.URISyntaxException;
 import java.net.URL;
 import java.net.URLConnection;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
-import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Random;
 import java.util.Set;
 import java.util.concurrent.Callable;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
 import org.apache.http.HttpResponse;
@@ -30,16 +32,10 @@ import org.apache.http.client.fluent.Request;
 import com.fasterxml.jackson.core.JsonParseException;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JsonMappingException;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
 
-import de.intranda.api.annotation.LinkedAnnotation;
-import de.intranda.api.iiif.presentation.AnnotationList;
-import de.intranda.api.iiif.presentation.Canvas;
-import de.intranda.api.iiif.presentation.Manifest;
-import de.intranda.api.iiif.presentation.Range;
-import de.intranda.api.iiif.presentation.Sequence;
-import de.intranda.api.iiif.presentation.content.ImageContent;
-import de.intranda.api.iiif.presentation.content.LinkingContent;
 import picocli.CommandLine;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
@@ -103,12 +99,12 @@ public class IIIFDownloaderMain implements Callable<Integer> {
         if (!Files.exists(dest)) {
             Files.createDirectories(dest);
         }
-        Optional<Manifest> optManifest = getManifest(manifestUrl);
+        Optional<JsonNode> optManifest = getManifest(manifestUrl);
         if (!optManifest.isPresent()) {
             System.err.println(String.format("could not load manifest from '%s'", manifestUrl));
             return 1;
         }
-        Manifest manifest = optManifest.get();
+        JsonNode manifest = optManifest.get();
 
         try {
             downloadPages(manifest);
@@ -120,25 +116,30 @@ public class IIIFDownloaderMain implements Callable<Integer> {
         return 0;
     }
 
-    private void downloadPages(Manifest manifest)
+    private void downloadPages(JsonNode manifest)
             throws MalformedURLException, IOException {
 
         if (includeStructures != null || excludeStructures != null) {
-            downloadStructures(maximumImages, downloadAlto, includeStructures, excludeStructures, selectRandomImages,
-                    "firstpage".equals(structureMode), manifest);
+            //TODO
+            /*downloadStructures(maximumImages, downloadAlto, includeStructures, excludeStructures, selectRandomImages,
+                    "firstpage".equals(structureMode), manifest);*/
         } else {
-            Sequence seq = manifest.getSequences().get(0);
-            List<Canvas> canvases = seq.getCanvases();
-            if (selectRandomImages && maximumImages != null && maximumImages < canvases.size()) {
-                downloadRandom(maximumImages, downloadAlto, canvases);
+            JsonNode seq = manifest.get("sequences").get(0);
+            JsonNode canvases = seq.get("canvases");
+            if (!canvases.isArray()) {
+                //error - do something
+            }
+            ArrayNode lstCanvases = (ArrayNode) canvases;
+            if (selectRandomImages && maximumImages != null && maximumImages < lstCanvases.size()) {
+                downloadRandom(maximumImages, downloadAlto, lstCanvases);
             } else {
-                downloadSequential(maximumImages, downloadAlto, canvases);
+                downloadSequential(maximumImages, downloadAlto, lstCanvases);
             }
         }
 
     }
 
-    private void downloadStructures(Integer maximumImages, boolean downloadAlto, List<String> includeStructureStrings,
+    /*private void downloadStructures(Integer maximumImages, boolean downloadAlto, List<String> includeStructureStrings,
             List<String> excludeStructureStrings, boolean selectRandomImages, boolean filterStructsFirstPage, Manifest manifest)
             throws JsonParseException, JsonMappingException, MalformedURLException, IOException {
         List<LabelValuePair> includeStructures = includeStructureStrings == null ? new ArrayList<>() : includeStructureStrings.stream()
@@ -190,9 +191,9 @@ public class IIIFDownloaderMain implements Callable<Integer> {
         for (Canvas c : canvases) {
             downloadImageAndAlto(c, downloadAlto);
         }
-    }
+    }*/
 
-    private void downloadRandom(Integer maximumImages, boolean downloadAlto, List<Canvas> canvases) throws JsonParseException, JsonMappingException,
+    private void downloadRandom(Integer maximumImages, boolean downloadAlto, ArrayNode canvases) throws JsonParseException, JsonMappingException,
             MalformedURLException, IOException {
         Random random = new Random();
         boolean hasAlto = downloadAlto;
@@ -207,11 +208,11 @@ public class IIIFDownloaderMain implements Callable<Integer> {
         }
     }
 
-    public void downloadSequential(Integer maximumImages, boolean downloadAlto, List<Canvas> canvases) throws IOException,
+    public void downloadSequential(Integer maximumImages, boolean downloadAlto, ArrayNode lstCanvases) throws IOException,
             JsonParseException, JsonMappingException, MalformedURLException {
         boolean hasAlto = downloadAlto;
         int downloadCount = 0;
-        for (Canvas canvas : canvases) {
+        for (JsonNode canvas : lstCanvases) {
             if (maximumImages != null && downloadCount == maximumImages.intValue()) {
                 break;
             }
@@ -220,18 +221,29 @@ public class IIIFDownloaderMain implements Callable<Integer> {
         }
     }
 
-    private boolean downloadImageAndAlto(Canvas canvas, boolean downloadAlto) throws JsonParseException, JsonMappingException, MalformedURLException,
+    private Pattern p = Pattern.compile(".*?/(.*)/.*?/.*?/.*?/default.jpg$");
+
+    private boolean downloadImageAndAlto(JsonNode canvas, boolean downloadAlto)
+            throws JsonParseException, JsonMappingException, MalformedURLException,
             IOException {
-        LinkedAnnotation lanno = canvas.getImages().get(0);
+        JsonNode image = canvas.get("images").get(0);
         //this is the base uri of the image
-        ImageContent imageContent = ((ImageContent) (lanno.getResource()));
-        String imageUri = imageContent.getService().getId();
+
+        String imageUri = image.get("resource").get("@id").asText();
         String basename = imageUri.substring(imageUri.lastIndexOf('/') + 1);
         int dotIdx = basename.lastIndexOf('.');
         if (dotIdx > 0) {
             basename = basename.substring(0, dotIdx);
         }
         String fullImageUri = imageUri + "/full/full/0/default.jpg";
+        Matcher matcher = p.matcher(imageUri);
+        if (matcher.matches()) {
+            fullImageUri = imageUri;
+            String group = matcher.group(1);
+            basename = group.substring(group.lastIndexOf('/') + 1);
+            System.out.println("new basename: " + basename);
+            basename = basename.substring(basename.lastIndexOf('/') + 1);
+        }
         //now try to get the ALTO url
         Optional<URI> altoUri = Optional.empty();
         boolean hasAlto = downloadAlto;
@@ -282,32 +294,33 @@ public class IIIFDownloaderMain implements Callable<Integer> {
         }
     }
 
-    public Optional<URI> getAltoUrl(Canvas canvas) throws IOException, JsonParseException, JsonMappingException,
+    public Optional<URI> getAltoUrl(JsonNode canvas) throws IOException, JsonParseException, JsonMappingException,
             MalformedURLException {
         ObjectMapper mapper = new ObjectMapper();
         mapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
         mapper.configure(DeserializationFeature.ACCEPT_SINGLE_VALUE_AS_ARRAY, true);
-        Optional<AnnotationList> optAltoAnnotation = canvas.getOtherContent()
-                .stream()
-                .filter(a -> a.getLabel() != null)
-                .filter(a -> a.getLabel().getValue().orElseGet(() -> "").equals("ALTO"))
+        ArrayNode lstSeeAlso = (ArrayNode) canvas.get("seeAlso");
+        Stream<JsonNode> nodes = IntStream.range(0, lstSeeAlso.size()).mapToObj(lstSeeAlso::get);
+        Optional<JsonNode> optALTOSeeAlso = nodes
+                .filter(a -> a.get("label") != null)
+                .filter(a -> "ALTO".equals(a.get("label").get(0).get("@value").textValue()))
                 .findFirst();
-        if (!optAltoAnnotation.isPresent()) {
+        if (!optALTOSeeAlso.isPresent()) {
             return Optional.empty();
         }
-        AnnotationList altoAnnotation = optAltoAnnotation.get();
-        try (InputStream in = altoAnnotation.getId().toURL().openStream()) {
-            AnnotationList fullAltoAnno = mapper.readValue(in, AnnotationList.class);
-            LinkingContent altoContent = (LinkingContent) ((LinkedAnnotation) (fullAltoAnno.getResources().get(0))).getResource();
-            return Optional.of(altoContent.getId());
+        JsonNode altoAnnotation = optALTOSeeAlso.get();
+        try {
+            return Optional.of(new URI(altoAnnotation.get("@id").textValue()));
+        } catch (URISyntaxException e) {
+            return Optional.empty();
         }
     }
 
-    private Optional<Manifest> getManifest(String manifest) throws MalformedURLException, IOException {
+    private Optional<JsonNode> getManifest(String manifest) throws MalformedURLException, IOException {
         ObjectMapper mapper = new ObjectMapper();
         mapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
         mapper.configure(DeserializationFeature.ACCEPT_SINGLE_VALUE_AS_ARRAY, true);
-        Manifest iiifMani = null;
+        JsonNode iiifMani = null;
 
         StatusRunnable run = new StatusRunnable("Receiving IIIF manifest...");
         Thread statusThread = new Thread(run);
@@ -328,7 +341,7 @@ public class IIIFDownloaderMain implements Callable<Integer> {
             return Optional.empty();
         }
         try (InputStream in = hr.getEntity().getContent()) {
-            iiifMani = mapper.readValue(in, Manifest.class);
+            iiifMani = mapper.readTree(in);
         }
         run.setMessage("Received IIIF manifest.    ");
         run.setShouldStop();
