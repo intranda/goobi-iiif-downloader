@@ -302,8 +302,14 @@ public class IIIFDownloaderMain implements Callable<Integer> {
         ObjectMapper mapper = new ObjectMapper();
         mapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
         mapper.configure(DeserializationFeature.ACCEPT_SINGLE_VALUE_AS_ARRAY, true);
-        ArrayNode lstSeeAlso = (ArrayNode) canvas.get("seeAlso");
-        Stream<JsonNode> nodes = IntStream.range(0, lstSeeAlso.size()).mapToObj(lstSeeAlso::get);
+        Stream<JsonNode> nodes;
+        JsonNode seeAlsoNode = canvas.get("seeAlso");
+        if (seeAlsoNode.isArray()) {
+            ArrayNode lstSeeAlso = (ArrayNode) seeAlsoNode;
+            nodes = IntStream.range(0, lstSeeAlso.size()).mapToObj(lstSeeAlso::get);
+        } else {
+            nodes = Collections.singletonList((seeAlsoNode)).stream();
+        }
         Optional<JsonNode> optALTOSeeAlso = nodes
                 .filter(a -> a.get("label") != null)
                 .filter(a -> "ALTO".equals(a.get("label").get(0).get("@value").textValue()))
