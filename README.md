@@ -13,9 +13,9 @@ Usage: java -jar goobi-iiif-downloader.jar [-da] [-ri] -d=<destinationFolder> -m
   -d, --destination=<destinationFolder>
                              the destination folder to download to
       -is, --include_structure=<includeStructures>
-                             structure to include - example: "Strukturtyp:Abbildung". The option is repeatable.
+                             structure to include - example: "Strukturtyp::Abbildung". The option is repeatable.
       -es, --exclude_structure=<excludeStructures>
-                             structure to exclude - example: "Strukturtyp:Abbildung". The option is repeatable.
+                             structure to exclude - example: "Strukturtyp::Abbildung". The option is repeatable.
       -sm, --structure_mode=<structureMode>
                              structure mode. Possible values: "firstpage" and "all"
       -max, --maximum_images=<maximumImages>
