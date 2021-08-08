@@ -59,10 +59,10 @@ public class ManifestQueryTest
      */
     public void testCanvasToFullCanvas() throws URISyntaxException, IOException {
         ObjectMapper mapper = new ObjectMapper();
-        InputStream in = new URL("https://digi.landesbibliothek.at/viewer/rest/iiif/manifests/AC03885497/canvas/11").openStream();
+        InputStream in = new URL("https://digi.landesbibliothek.at/viewer/api/v1/records/AC03885497/pages/11/canvas/").openStream();
         JsonNode inCanvas = mapper.readTree(in);
         Optional<JsonNode> outCanvas = ManifestQuery.canvasToFullCanvas(inCanvas, testManifest);
-        assertNotNull(outCanvas.get());
+        assertTrue(outCanvas.isPresent());
         in.close();
     }
 
@@ -76,7 +76,7 @@ public class ManifestQueryTest
     public void testStreamAllCanvasStructures() throws URISyntaxException, MalformedURLException, IOException {
         ObjectMapper mapper = new ObjectMapper();
         //this is the second page of a chapter
-        InputStream in = new URL("https://digi.landesbibliothek.at/viewer/rest/iiif/manifests/AC03885497/canvas/12").openStream();
+        InputStream in = new URL("https://digi.landesbibliothek.at/viewer/api/v1/records/AC03885497/pages/12/canvas/").openStream();
         JsonNode secondPageCanvas = mapper.readTree(in);
         //should be 1 element in the stream:
         Stream<JsonNode> allCanvasStructs = ManifestQuery.streamAllCanvasStructures(secondPageCanvas, false, testManifest);
@@ -87,7 +87,7 @@ public class ManifestQueryTest
         in.close();
 
         //this is the first page of a chapter
-        in = new URL("https://digi.landesbibliothek.at/viewer/rest/iiif/manifests/AC03885497/canvas/11").openStream();
+        in = new URL("https://digi.landesbibliothek.at/viewer/api/v1/records/AC03885497/pages/11/canvas/").openStream();
         JsonNode firstPageCanvas = mapper.readTree(in);
         // should one element in the stream:
         Stream<JsonNode> cCanvasStructs = ManifestQuery.streamAllCanvasStructures(firstPageCanvas, true, testManifest);
@@ -95,7 +95,7 @@ public class ManifestQueryTest
         in.close();
 
         //this canvas is in a chapter and has an illustration on it
-        in = new URL("https://digi.landesbibliothek.at/viewer/rest/iiif/manifests/AC03885497/canvas/29").openStream();
+        in = new URL("https://digi.landesbibliothek.at/viewer/api/v1/records/AC03885497/pages/29/canvas/").openStream();
         JsonNode imageCanvas = mapper.readTree(in);
         // should two elements in the stream:
         Stream<JsonNode> imageCanvasStructs = ManifestQuery.streamAllCanvasStructures(imageCanvas, false, testManifest);
@@ -114,7 +114,7 @@ public class ManifestQueryTest
         LabelValuePair filterAbbildung = new LabelValuePair("Strukturtyp", "Abbildung");
         LabelValuePair filterKapitel = new LabelValuePair("Strukturtyp", "Kapitel");
         // this canvas is in a chapter and has an illustration on it
-        InputStream in = new URL("https://digi.landesbibliothek.at/viewer/rest/iiif/manifests/AC03885497/canvas/29").openStream();
+        InputStream in = new URL("https://digi.landesbibliothek.at/viewer/api/v1/records/AC03885497/pages/29/canvas/").openStream();
         JsonNode imageCanvas = mapper.readTree(in);
         // filtering out "Strukturtyp::Abbildung" and first pages only should filter this canvas:
         assertFalse(ManifestQuery.filterExcludeCanvas(imageCanvas, Collections.singletonList(filterAbbildung), true, testManifest));
