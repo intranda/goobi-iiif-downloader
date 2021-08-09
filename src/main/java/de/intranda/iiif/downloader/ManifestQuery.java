@@ -2,6 +2,7 @@ package de.intranda.iiif.downloader;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
@@ -50,6 +51,7 @@ public class ManifestQuery {
             return true;
         }
         // get all structures pointing at this canvas, then check that none of these have any value in exclude
+        List<JsonNode> structs = streamAllCanvasStructures(canvas, filterStructsFirstPage, manifest).collect(Collectors.toList());
         return streamAllCanvasStructures(canvas, filterStructsFirstPage, manifest)
                 .flatMap(struct -> streamJsonNodeAsArray(struct.get("metadata")))
                 .noneMatch(meta -> metaContainsAnyLabelValuePair(meta, exclude));
@@ -71,21 +73,28 @@ public class ManifestQuery {
             return false;
         }
         if (labelNode.isArray()) {
+            String label = null;
+            String value = null;
             if (!valueNode.isArray()) {
                 //TODO: check when this happens...
-                return false;
+                value = valueNode.isTextual() ? valueNode.asText() : valueNode.get("@value").asText();
             }
             ArrayNode labelArr = (ArrayNode) meta.get("label");
-            ArrayNode valueArr = (ArrayNode) meta.get("value");
+            ArrayNode valueArr = valueNode.isArray() ? (ArrayNode) meta.get("value") : null;
             for (int i = 0; i < labelArr.size(); i++) {
                 JsonNode currLabelNode = labelArr.get(i);
-                JsonNode currValueNode = valueArr.get(i);
-                if (currValueNode == null) {
+                JsonNode currValueNode = valueArr != null ? valueArr.get(i) : null;
+                if (currValueNode == null && value == null) {
                     continue;
                 }
-                String label = currLabelNode.isTextual() ? currLabelNode.asText() : currLabelNode.get("@value").asText();
-                String value = currValueNode.isTextual() ? currValueNode.asText() : currValueNode.get("@value").asText();
-                if (include.stream().anyMatch(lvp -> lvp.equals(label, value))) {
+                label = currLabelNode.isTextual() ? currLabelNode.asText() : currLabelNode.get("@value").asText();
+                if (currValueNode != null) {
+                    value = currValueNode.isTextual() ? currValueNode.asText() : currValueNode.get("@value").asText();
+                }
+
+                final String fLabel = label;
+                final String fValue = value;
+                if (include.stream().anyMatch(lvp -> lvp.equals(fLabel, fValue))) {
                     return true;
                 }
             }
