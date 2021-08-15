@@ -5,7 +5,10 @@ download images and OCR results using IIIF manifests.
 
 It is also possible to limit the downloaded pages by structures. The structures can be filtered by including or excluding metadata label/value pairs.
 
-Usage:
+## Usage:
+
+The binaries can be downloaded in the github releases section. The CLI can then be called as follows:
+
 ```
 Usage: java -jar goobi-iiif-downloader.jar [-da] [-ri] -d=<destinationFolder> -m=<manifestUrl> [-max=<maximumImages>] [-sm=<structureMode>] [-es=<excludeStructures>]... [-is=<includeStructures>]...
   -m, --manifest=<manifestUrl>
@@ -23,3 +26,5 @@ Usage: java -jar goobi-iiif-downloader.jar [-da] [-ri] -d=<destinationFolder> -m
       -ri, --random_images   select random images
       -da, --download_alto   download alto (if present)
 ```
+
+
